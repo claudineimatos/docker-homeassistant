@@ -1,3 +1,5 @@
+This configuration is only an example, it is not maintained...
+
 # Home-Assistant getting started using docker-compose
 
 This is a basic example using docker compose to run:
