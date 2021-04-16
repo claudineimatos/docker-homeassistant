@@ -9,12 +9,9 @@ homeassistant:
   # metric for Metric, imperial for Imperial
   unit_system: metric
   # Pick yours from here: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-  time_zone: Europe/Stockholm
+  time_zone:    !env_var                 HA_HOME_TIMEZONE
   # Customization file
   customize: !include customize.yaml
-
-# Show links to resources in log and frontend
-introduction:
 
 # Enables the frontend
 frontend:
@@ -24,7 +21,7 @@ config:
 
 http:
   # Secrets are defined in the file secrets.yaml
-  api_password: !secret http_password
+  # api_password: !secret http_password
   # Uncomment this if you are using SSL/TLS, running in Docker container, etc.
   # base_url: example.duckdns.org:8123
 
@@ -36,9 +33,6 @@ http:
 updater:
   # Optional, allows Home Assistant developers to focus on popular components.
   # include_used_components: true
-
-# Discover some devices automatically
-discovery:
 
 # Allows you to issue voice commands from the frontend in enabled browsers
 conversation:
@@ -55,13 +49,9 @@ map:
 # Track the sun
 sun:
 
-# Weather prediction
-sensor:
-  - platform: yr
-
 # Text to speech
 tts:
-  - platform: google
+  - platform: google_translate
 
 group: !include groups.yaml
 automation: !include automations.yaml
@@ -75,27 +65,4 @@ mqtt:
   discovery: true
 
 recorder:
-  db_url: !secret database_connection_string
-  exclude:
-    domains:
-      - automation
-      - updater
-      - input_boolean
-      - input_number
-      - input_select
-      - input_datetime
-      - input_string
-      - script
-    entities:
-      - group.machine_info
-      - sun.sun
-      - sensor.date
-  include:
-    domains:
-      - binary_sensor
-      - cover
-      - device_tracker
-      - light
-      - sensor
-      - switch
-      - media_player
+  commit_interval: 60

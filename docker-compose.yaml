@@ -2,10 +2,8 @@
 # Docker compose file for all the servers needed for home-assistant
 # This compose file consists of the following server applications:
 # - Home-Assistant (external: localhost:8123)
-# - MySQL (internal: db:3306)
-# - AppDaemon (external: localhost:5050)
-# - HomeBridge (TBD)
 # - Mqtt (external: localhost:8883 internal: mqtt:1883)
+# - Settings Container (used to do initial HA settings copy)
 #
 # https://docs.docker.com/compose/
 # https://docs.docker.com/compose/compose-file/compose-file-v2/
@@ -19,21 +17,19 @@ services:
   ############################################################
   home-assistant:
     container_name: homeassistant_ha
-    image: homeassistant/home-assistant:latest
+    image: "homeassistant/raspberrypi3-homeassistant:stable"
     depends_on:
-      # Start database first
-      - db
+      # Start settings container first
+      - ha_settings
       # Start mqtt first
       - mqtt
     links:
-      # Link ports from db container
-      - db
       # Link ports from mqtt container 
       - mqtt
     restart: always
     volumes:
       # Home-assistant config directory
-      - ./home-assistant:/config
+      - homeassistant:/config
       # Timezone configuration (Linux only)
       - /etc/localtime:/etc/localtime:ro
     ports:
@@ -42,71 +38,6 @@ services:
     env_file:
       # Read all environment variables from the env file
       - ./home-assistant/ha.env
-
-  ############################################################
-  # MySQL Server
-  # https://hub.docker.com/_/mysql/
-  ############################################################
-  db:
-    container_name: homeassistant_db
-    image: mysql:5.7
-    volumes:
-      # The data dir for mysql as volume for persistance
-      - ./mysql/data:/var/lib/mysql
-    restart: always
-    env_file:
-      # Read all environment variables from env file to configure mysql instance
-      - ./mysql/secrets.env
-
-  ############################################################
-  # AppDaemon Server (5050 public port)
-  # https://hub.docker.com/r/acockburn/appdaemon/
-  # http://appdaemon.readthedocs.io/en/latest/
-  ############################################################
-  appdaemon:
-    container_name: homeassistant_appdaemon
-    image: acockburn/appdaemon:latest
-    depends_on:
-      # Start home-assistant first
-      - home-assistant
-    links:
-      # Link ports from home-assistant container
-      - home-assistant
-    ports:
-      - 5050:5050
-    volumes:
-      # App daemon configuration
-      - ./appdaemon:/conf
-      # Timezone configuration (Linux only)
-      - /etc/localtime:/etc/localtime:ro
-    restart: always
-
-  ############################################################
-  # Homebridge Server (51862 public port, 5353/udp)
-  # https://github.com/nfarina/homebridge
-  # https://github.com/home-assistant/homebridge-homeassistant
-  ############################################################
-  homebridge:
-    container_name: homeassistant_homebridge
-    image: orbnedron/homebridge-homeassistant
-    depends_on:
-      - home-assistant
-    links:
-      - home-assistant
-    ports:
-      # Expose public port
-      - 51862:51862
-      # Avahi
-      - 5353:5353/udp
-    volumes:
-      # Configuration file
-      - ./homebridge:/config
-      # Timezone configuration (Linux only)
-      - /etc/localtime:/etc/localtime:ro
-    restart: always
-    env_file:
-      # Read all environment variables from the env file
-      - ./homebridge/homebridge.env
 
   ############################################################
   # MQTT Server (8883 public port)
@@ -121,7 +52,7 @@ services:
       # Internal port
       - 1883
     volumes:
-      # The mostuitto configuration file
+      # The mosquitto configuration file
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
       # The authorization file
       - ./mosquitto/passwd:/mosquitto/config/passwd
@@ -130,7 +61,24 @@ services:
       # Log directory
       # - ./mosquitto/log:/mosquitto/log
       # The data dir for persistance
-      - ./mosquitto/data:/mosquitto/data
+      - mosquito:/mosquitto/data
       # Timezone configuration (Linux only)
       - /etc/localtime:/etc/localtime:ro
     restart: always
+
+  ##############################################################
+  # Settings container
+  # Used to copy initial Home Assistant settings
+  ##############################################################
+  ha_settings:
+    container_name: homeassistant_settings
+    build: 
+      context: settings-container
+    volumes:
+      - homeassistant:/config/
+      - ./home-assistant:/home-assistant/
+    environment: 
+      - FORCE_RESET_CONFIG=TRUE
+volumes:
+  homeassistant: {}
+  mosquito: {}
